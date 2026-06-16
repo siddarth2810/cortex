@@ -150,3 +150,4 @@ Currently experimental features are:
   - `-ingester.head-queried-series-metrics-windows` time windows to report (default: 2h)
   - `-ingester.head-queried-series-metrics-window-duration` HLL sub-window size
   - `-ingester.head-queried-series-metrics-sample-rate` query sampling rate
+- Parquet Converter: `-parquet-converter.max-block-label-names` (int) - If enabled, adds a no-convert mark and skips blocks with too many labels.
