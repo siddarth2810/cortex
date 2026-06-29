@@ -773,19 +773,28 @@ func newTSDBState(bucketClient objstore.Bucket, registerer prometheus.Registerer
 			Help: "Total number of compactions that failed.",
 		}),
 		walReplayTime: promauto.With(registerer).NewHistogram(prometheus.HistogramOpts{
-			Name:    "cortex_ingester_tsdb_wal_replay_duration_seconds",
-			Help:    "The total time it takes to open and replay a TSDB WAL.",
-			Buckets: prometheus.DefBuckets,
+			Name:                            "cortex_ingester_tsdb_wal_replay_duration_seconds",
+			Help:                            "The total time it takes to open and replay a TSDB WAL.",
+			Buckets:                         prometheus.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		appenderAddDuration: promauto.With(registerer).NewHistogram(prometheus.HistogramOpts{
-			Name:    "cortex_ingester_tsdb_appender_add_duration_seconds",
-			Help:    "The total time it takes for a push request to add samples to the TSDB appender.",
-			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+			Name:                            "cortex_ingester_tsdb_appender_add_duration_seconds",
+			Help:                            "The total time it takes for a push request to add samples to the TSDB appender.",
+			Buckets:                         []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 		appenderCommitDuration: promauto.With(registerer).NewHistogram(prometheus.HistogramOpts{
-			Name:    "cortex_ingester_tsdb_appender_commit_duration_seconds",
-			Help:    "The total time it takes for a push request to commit samples appended to TSDB.",
-			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+			Name:                            "cortex_ingester_tsdb_appender_commit_duration_seconds",
+			Help:                            "The total time it takes for a push request to commit samples appended to TSDB.",
+			Buckets:                         []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: time.Hour,
 		}),
 
 		idleTsdbChecks: idleTsdbChecks,
@@ -1582,7 +1591,14 @@ func (i *Ingester) Push(ctx context.Context, req *cortexpb.WriteRequest) (*corte
 					fh  *histogram.FloatHistogram
 				)
 
-				if hp.GetCountFloat() > 0 {
+				// Choose the decoder based on the histogram's proto type (the
+				// CountInt/CountFloat oneof), not the count value. A float
+				// histogram with a count of 0 (e.g. a staleness marker or an
+				// empty histogram) still has the CountFloat oneof set, so a
+				// value-based check (hp.GetCountFloat() > 0) would misroute it
+				// to the integer decoder, which panics. This mirrors the
+				// discriminator used everywhere else (e.g. util/validation).
+				if hp.IsFloatHistogram() {
 					fh = cortexpb.FloatHistogramProtoToFloatHistogram(hp.Histogram)
 				} else {
 					h = cortexpb.HistogramProtoToHistogram(hp.Histogram)

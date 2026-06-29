@@ -273,7 +273,7 @@ func (u *ParquetBucketStores) createParquetBucketStore(userID string, userLogger
 		logger:            userLogger,
 		bucket:            userBucket,
 		limits:            u.limits,
-		concurrency:       4, // TODO: make this configurable
+		concurrency:       u.cfg.BucketStore.ParquetQueryConcurrency,
 		chunksDecoder:     u.chunksDecoder,
 		matcherCache:      u.matcherCache,
 		parquetShardCache: u.parquetShardCache,
@@ -307,7 +307,7 @@ func (p *parquetBucketStore) newParquetBlock(ctx context.Context, name string, s
 			name,
 			labelsFileOpener,
 			chunksFileOpener,
-			0, // we always only have 1 shard - shard 0
+			shardID,
 			parquet_storage.WithFileOptions(
 				parquet.SkipMagicBytes(true),
 				parquet.ReadBufferSize(100*1024),

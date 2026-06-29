@@ -186,6 +186,19 @@ parquet_converter:
   # CLI flag: -parquet-converter.max-rows-per-row-group
   [max_rows_per_row_group: <int> | default = 1000000]
 
+  # Maximum number of row groups per parquet shard. Each shard holds at most
+  # num-row-groups * max-rows-per-row-group series, so lowering this value
+  # splits a block into more parquet shards for better read parallelization. 0
+  # means unlimited (single shard).
+  # CLI flag: -parquet-converter.num-row-groups
+  [num_row_groups: <int> | default = 0]
+
+  # Maximum number of columns per Parquet file. When exceeded, conversion will
+  # automatically shard the data into multiple files. 0 uses the library default
+  # (32767).
+  # CLI flag: -parquet-converter.max-num-columns
+  [max_num_columns: <int> | default = 0]
+
   # Enable disk-based write buffering to reduce memory consumption during
   # parquet file generation.
   # CLI flag: -parquet-converter.file-buffer-enabled
@@ -2735,6 +2748,14 @@ bucket_store:
   # CLI flag: -blocks-storage.bucket-store.parquet-shard-cache-ttl
   [parquet_shard_cache_ttl: <duration> | default = 24h]
 
+  # Maximum number of concurrent goroutines per query applied at each level of
+  # parquet processing: shard querying, row group processing, and column
+  # materialization. Note: this limit is applied independently at each level, so
+  # the total goroutines per query can grow multiplicatively (up to N^3 in the
+  # worst case).
+  # CLI flag: -blocks-storage.bucket-store.parquet-query-concurrency
+  [parquet_query_concurrency: <int> | default = 4]
+
 tsdb:
   # Local directory to store TSDBs in the ingesters.
   # CLI flag: -blocks-storage.tsdb.dir
@@ -3571,6 +3592,14 @@ ring:
 # goroutine will be created for each push request.
 # CLI flag: -distributor.num-push-workers
 [num_push_workers: <int> | default = 0]
+
+# EXPERIMENTAL: Number of go routines to handle query fan-out calls from
+# distributors (queriers and rulers) to ingesters. When no workers are
+# available, a new goroutine will be spawned automatically. If set to 0
+# (default), workers are disabled, and a new goroutine will be created for each
+# query request.
+# CLI flag: -distributor.num-query-workers
+[num_query_workers: <int> | default = 0]
 
 instance_limits:
   # Max ingestion rate (samples/sec) that this distributor will accept. This
